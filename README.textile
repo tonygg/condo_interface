@@ -1,5 +1,11 @@
-h1. condo_interface
+h1. Condo Interface
 
 The default UI for the Condo project. Feel free to use, extend, adapt or write your own.
+Condo Interface is under the terms of the MIT License.
 
+
+h2. Usage
+
+"Condo":https://github.com/cotag/Condominios is built as an "AngularJS application":http://angularjs.org/ which implements "models":http://docs.angularjs.org/guide/concepts#model and a "controller":http://docs.angularjs.org/guide/concepts#controller for a "Rails backend":http://rubyonrails.org/
+Condo Interface is an example "view":http://docs.angularjs.org/guide/concepts#view with an associated "directive":http://docs.angularjs.org/guide/concepts#directives that interface with the a Condo controller.
 
