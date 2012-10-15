@@ -1,0 +1,5 @@
+h1. condo_interface
+
+The default UI for the Condo project. Feel free to use, extend, adapt or write your own.
+
+
