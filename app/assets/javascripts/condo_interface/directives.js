@@ -153,13 +153,36 @@
 				hover_class: attrs['coHoverClass'] || 'drag-hover',
 				pre_check: attrs['coAccepts'] || '/./i',
 				size_limit: attrs['coLimit'] || 0
+			},
+			
+			//
+			// Add files with their path information to the system
+			//
+			recursiveDirs = function(item, path) {
+				var dirReader = item.createReader();
+				
+				dirReader.readEntries(function(entries) {
+					var length = entries.length,
+						i = 0;
+						
+					for (; i < length; i++) {
+						if (entries[i].isFile) {
+							entries[i].file(function(file) {
+								file.dir_path = path;
+								scope.add([file]);
+							});
+						} else if (entries[i].isDirectory) {
+							recursiveDirs(entries[i], path + entries[i].name + '/');
+						}
+					}
+				});
 			};
 			
 			
 			if(!!attrs['coEndpoint'])
 				scope.endpoint = attrs['coEndpoint'];
 				
-				
+			
 			scope.options = options;
 			
 			
@@ -187,6 +210,24 @@
 				event.stopPropagation();
 				
 				safeApply(scope, function() {
+					if (!!event.originalEvent.dataTransfer.items) {
+						var items = event.originalEvent.dataTransfer.items,
+							length = items.length,
+							i = 0;
+						
+						for (; i < length; i++) {
+							var entry,
+								item = items[i];
+								
+							item.getAsEntry = item.getAsEntry || item.webkitGetAsEntry || item.mozGetAsEntry;
+							entry = item.getAsEntry();
+							
+							if (entry.isDirectory) {
+								recursiveDirs(entry, entry.name + '/');
+							}
+						}
+					}
+
 					scope.add(event.originalEvent.dataTransfer.files);
 				});
 			}).on('dragover.condo', options.drop_targets, function(event) {
