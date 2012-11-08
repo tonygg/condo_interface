@@ -106,12 +106,12 @@ div.condo-uploads-wrapper > div.condo-file-selection {
 	box-shadow: 0 0 8pt #888;
 }
 
-div.condo-uploads-wrapper > div.condo-file-selection > form {
+div.condo-uploads-wrapper > div.condo-file-selection > div {
 	width: 100%;
 	height: 100%;
 }
 
-div.condo-uploads-wrapper > div.condo-file-selection > form table {
+div.condo-uploads-wrapper > div.condo-file-selection > div table {
 	width: 100%;
 	height: 100%;
 	
@@ -129,7 +129,7 @@ div.condo-uploads-wrapper > div.condo-file-selection table td {
 }
 
 
-div.condo-file-selection td.file-upload-btn > span {
+div.condo-file-selection td.file-upload-btn > form > span {
     /* Button styles from twitter bootstrap */
 	display: block;
 	position: relative;
@@ -143,7 +143,7 @@ div.condo-file-selection td.file-upload-btn > span {
 }
 
 
-div.condo-file-selection td.file-upload-btn > span > input {
+div.condo-file-selection td.file-upload-btn > form > span > input {
 	position: absolute;
 	top: 0;
 	left: 0;

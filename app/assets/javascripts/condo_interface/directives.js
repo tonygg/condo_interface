@@ -165,11 +165,11 @@
 				//	Queue items here until we decide they should be added to the view
 				//
 				processPending = function() {
-					var avaliable = scope.view_limit - scope.upload_count;
+					var avaliable = view_limit - scope.upload_count;
 					
-					if(avaliable > 0 && scope.pending_items.length > 0) {
+					if(avaliable > 0 && pending_items.length > 0) {
 						
-						var item = scope.pending_items.shift(),
+						var item = pending_items.shift(),
 							items = item.items,
 							length = items.length;
 						
@@ -186,7 +186,8 @@
 									try {
 										if (entry.isDirectory) {
 											entry.createReader().readEntries(function(entries) {
-												scope.pending_items.push({
+												
+												pending_items.push({
 													items: entries,
 													folders: true,
 													path: path + entry.name + '/'
@@ -220,12 +221,14 @@
 									count += 1;
 									if (count >= length) {
 										if(new_items.length > 0) {
-											scope.pending_items.unshift({	// add any files to the start of the queue
+											pending_items.unshift({	// add any files to the start of the queue
 												items: new_items,
 												folders: false
 											});
 										}
-										$timeout(processPending);
+										safeApply(scope, function() {
+											$timeout(processPending);
+										});
 									}
 								};
 							
@@ -243,15 +246,17 @@
 								}
 								processEntry(entry, item.path);
 							}
-						} else if(length < avaliable) {		// Regular files where we can add them all at once
+						} else if(length <= avaliable) {		// Regular files where we can add them all at once
 							scope.add(items);
 							$timeout(processPending);		// Delay until next tick (delay and invoke apply are optional)
 						} else {							// Regular file where we can't add them all at once
 							scope.add(items.splice(0, avaliable));
-							scope.pending_items.unshift(item);
+							pending_items.unshift(item);
 						}
 					}
-				};
+				},
+				view_limit = 50,	// Number of uploads that should be displayed at once
+				pending_items = [];	// These are files or folders that have not been processed yet as we are at the view port limit
 				
 				
 				if(!!attrs['coEndpoint'])
@@ -259,9 +264,7 @@
 					
 				
 				scope.options = options;
-				scope.remove_completed = false;	// Remove completed uploads automatically
-				scope.view_limit = 50;			// Number of uploads that should be displayed at once
-				scope.pending_items = [];		// These are files or folders that have not been processed yet as we are at the view port limit
+				scope.remove_completed = false;	// Remove completed uploads automatically	
 				
 				
 				//
@@ -287,20 +290,21 @@
 					event.preventDefault();
 					event.stopPropagation();
 					
-					safeApply(scope, function() {
-						if (!!event.originalEvent.dataTransfer.items) {
-							scope.pending_items.push({
-								items: event.originalEvent.dataTransfer.items,
-								folders: true,
-								path: ''
-							});
-						} else {
-							scope.pending_items.push({
-								items: event.originalEvent.dataTransfer.files,
-								folders: false
-							});
-						}
-						
+					
+					if (!!event.originalEvent.dataTransfer.items) {
+						pending_items.push({
+							items: event.originalEvent.dataTransfer.items,
+							folders: true,
+							path: ''
+						});
+					} else {
+						pending_items.push({
+							items: event.originalEvent.dataTransfer.files,
+							folders: false
+						});
+					}
+					
+					safeApply(scope, function() {	
 						processPending();
 					});
 				}).on('dragover.condo', options.drop_targets, function(event) {
@@ -318,13 +322,21 @@
 				// Detect manual file uploads
 				//
 				on('change.condo', ':file', function(event) {
-					var self = $(this);
+					var files = $(this)[0].files,
+						copy = [],
+						i = 0;
+					
+					for (; i < files.length; i += 1)
+						copy.push(files[i]);
+						
+					$(this).parents('form')[0].reset();
+					
+					pending_items.push({
+						items: copy,
+						folders: false
+					});
+					
 					safeApply(scope, function() {
-						scope.pending_items.push({
-							items: self[0].files,
-							folders: false
-						});
-						self.parents('form')[0].reset();
 						processPending();
 					});
 				});

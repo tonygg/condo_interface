@@ -34,20 +34,22 @@
 		</div>
 	</div>
 	<div class="condo-file-selection">
-		<form>
+		<div>
 			<table>
 				<tr>
 					<td class="file-upload-btn">
-						<span class="btn">
-							<table>
-								<tr>
-									<td>
-										<label for="file-upload_{{$id}}">Select files</label>
-									</td>
-								</tr>
-							</table>
-							<input id="file-upload_{{$id}}" type="file" multiple />
-						</span>
+						<form>
+							<span class="btn">
+								<table>
+									<tr>
+										<td>
+											<label for="file-upload_{{$id}}">Select files</label>
+										</td>
+									</tr>
+								</table>
+								<input id="file-upload_{{$id}}" type="file" multiple />
+							</span>
+						</form>
 					</td>
 					<td>
 						<ul class="dropup">
@@ -64,6 +66,6 @@
 					</td>
 				</tr>
 			</table>
-		</form>
+		</div>
 	</div>
 </div>
