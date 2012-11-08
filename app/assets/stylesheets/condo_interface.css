@@ -9,6 +9,7 @@
  * compiled file, but it's generally better to create a new file per style scope.
  *
  *= require_self
+ *= require condo_interface/bootstrap/condo_custom
  *= require condo_interface/uploads
  *= require condo_interface/images
  *= require_tree .

@@ -20,10 +20,10 @@
 (function (factory) {
 	if (typeof define === 'function' && define.amd) {
 		// AMD
-		define(['jquery', 'condo_uploader'], factory);
+		define(['jquery', 'condo_controller'], factory);
 	} else {
 		// Browser globals
-		factory(jQuery, window.CondoUploader);
+		factory(jQuery, window.CondoController);
 	}
 }(function ($, uploads, undefined) {
 	'use strict';
@@ -43,7 +43,10 @@
 	// Allow for both mobile and desktop events or both
 	//	Overkill?
 	//
-	uploads.directive('coTap', function() {
+	var condoInterface = angular.module('CondoInterface', ['CondoUploader'])
+	
+	
+	condoInterface.directive('coTap', function() {
 		
 		
 		//
@@ -145,135 +148,219 @@
 	//
 	// create a directive for attaching the input events
 	//
-	uploads.directive('coUploads', ['Condo.Broadcast', function(broadcast) {
-		return function(scope, element, attrs) {				
-			var options = {
-				delegate: attrs['coDelegate'] || element,
-				drop_targets: attrs['coTargets'] || element,
-				hover_class: attrs['coHoverClass'] || 'drag-hover',
-				pre_check: attrs['coAccepts'] || '/./i',
-				size_limit: attrs['coLimit'] || 0
-			},
-			
-			//
-			// Add files with their path information to the system
-			//
-			recursiveDirs = function(item, path) {
-				var dirReader = item.createReader();
-				
-				dirReader.readEntries(function(entries) {
-					var length = entries.length,
-						i = 0;
-						
-					for (; i < length; i++) {
-						if (entries[i].isFile) {
-							entries[i].file(function(file) {
-								file.dir_path = path;
-								scope.add([file]);
-							});
-						} else if (entries[i].isDirectory) {
-							recursiveDirs(entries[i], path + entries[i].name + '/');
-						}
-					}
-				});
-			};
-			
-			
-			if(!!attrs['coEndpoint'])
-				scope.endpoint = attrs['coEndpoint'];
-				
-			
-			scope.options = options;
-			
-			
-			//
-			// Determine how to draw the element
-			//
-			if(document.implementation.hasFeature("org.w3c.svg", "1.0")) {
-				element.addClass('supports-svg');
-			} else {
-				element.addClass('no-svg');
-			}
-				
-				
-			//
-			// Detect file drops
-			//
-			options.drop_targets = $(options.drop_targets);
-			options.delegate = $(options.delegate).on('drop.condo', options.drop_targets, function(event) {
-				options.drop_targets.removeClass(options.hover_class);
+	condoInterface.directive('coUploads', ['Condo.Broadcast', '$timeout', function(broadcast, $timeout) {
+		return {
+			controller: 'Condo.Controller',
+			link: function(scope, element, attrs) {
+				var options = {
+					delegate: attrs['coDelegate'] || element,
+					drop_targets: attrs['coTargets'] || element,
+					hover_class: attrs['coHoverClass'] || 'drag-hover',
+					pre_check: attrs['coAccepts'] || '/./i',
+					size_limit: attrs['coLimit'] || 0
+				},
 				
 				//
-				// Prevent propagation early (so any errors don't cause unwanted behaviour)
+				// Add files with their path information to the system
+				//	Queue items here until we decide they should be added to the view
 				//
-				event.preventDefault();
-				event.stopPropagation();
-				
-				safeApply(scope, function() {
-					if (!!event.originalEvent.dataTransfer.items) {
-						var items = event.originalEvent.dataTransfer.items,
-							length = items.length,
-							i = 0;
+				processPending = function() {
+					var avaliable = scope.view_limit - scope.upload_count;
+					
+					if(avaliable > 0 && scope.pending_items.length > 0) {
 						
-						for (; i < length; i++) {
-							var entry,
-								item = items[i];
-								
-							item.getAsEntry = item.getAsEntry || item.webkitGetAsEntry || item.mozGetAsEntry;
-							entry = item.getAsEntry();
+						var item = scope.pending_items.shift(),
+							items = item.items,
+							length = items.length;
+						
+						if(item.folders) {
+							var i = 0,
+								entry,
+								obj,
+								count = 0,
+								new_items = [],
+								processEntry = function(entry, path) {
+									//
+									// If it is a directory we add it to the pending queue
+									//
+									try {
+										if (entry.isDirectory) {
+											entry.createReader().readEntries(function(entries) {
+												scope.pending_items.push({
+													items: entries,
+													folders: true,
+													path: path + entry.name + '/'
+												});
+												checkCount();
+											});
+										} else if (entry.isFile) {			// Files are added to a file queue
+											entry.file(function(file) {
+												if(path.length > 0)
+													file.dir_path = path;
+												
+												new_items.push(file);
+												
+												checkCount();
+											});
+										} else {
+											checkCount();
+										}
+									} catch(err) {
+										//
+										// TODO:: hmmmm
+										//
+										checkCount();
+									}
+		
+								},
+								checkCount = function() {
+									//
+									// Counts the entries processed so we can add any files to the queue
+									//
+									count += 1;
+									if (count >= length) {
+										if(new_items.length > 0) {
+											scope.pending_items.unshift({	// add any files to the start of the queue
+												items: new_items,
+												folders: false
+											});
+										}
+										$timeout(processPending);
+									}
+								};
 							
-							if (entry.isDirectory) {
-								recursiveDirs(entry, entry.name + '/');
+							for (; i < length; i++) {
+								
+								//
+								// first layer of DnD folders require you to getAsEntry
+								//
+								if(item.path.length == 0) {
+									obj = items[i];
+									obj.getAsEntry = obj.getAsEntry || obj.webkitGetAsEntry || obj.mozGetAsEntry;
+									entry = obj.getAsEntry();
+								} else {
+									entry = items[i];
+								}
+								processEntry(entry, item.path);
 							}
+						} else if(length < avaliable) {		// Regular files where we can add them all at once
+							scope.add(items);
+							$timeout(processPending);		// Delay until next tick (delay and invoke apply are optional)
+						} else {							// Regular file where we can't add them all at once
+							scope.add(items.splice(0, avaliable));
+							scope.pending_items.unshift(item);
 						}
 					}
-
-					scope.add(event.originalEvent.dataTransfer.files);
-				});
-			}).on('dragover.condo', options.drop_targets, function(event) {
-				$(this).addClass(options.hover_class);
+				};
 				
-				return false;
-			}).on('dragleave.condo', options.drop_targets, function(event) {
-				$(this).removeClass(options.hover_class);
 				
-				return false;
-			}).
-			
-			
-			//
-			// Detect manual file uploads
-			//
-			on('change.condo', ':file', function(event) {
-				var self = $(this);
-				safeApply(scope, function() {
-					scope.add(self[0].files);
-					self.parents('form')[0].reset();
+				if(!!attrs['coEndpoint'])
+					scope.endpoint = attrs['coEndpoint'];
+					
+				
+				scope.options = options;
+				scope.remove_completed = false;	// Remove completed uploads automatically
+				scope.view_limit = 50;			// Number of uploads that should be displayed at once
+				scope.pending_items = [];		// These are files or folders that have not been processed yet as we are at the view port limit
+				
+				
+				//
+				// Determine how to draw the element
+				//
+				if(document.implementation.hasFeature("org.w3c.svg", "1.0")) {
+					element.addClass('supports-svg');
+				} else {
+					element.addClass('no-svg');
+				}
+					
+					
+				//
+				// Detect file drops
+				//
+				options.drop_targets = $(options.drop_targets);
+				options.delegate = $(options.delegate).on('drop.condo', options.drop_targets, function(event) {
+					options.drop_targets.removeClass(options.hover_class);
+					
+					//
+					// Prevent propagation early (so any errors don't cause unwanted behaviour)
+					//
+					event.preventDefault();
+					event.stopPropagation();
+					
+					safeApply(scope, function() {
+						if (!!event.originalEvent.dataTransfer.items) {
+							scope.pending_items.push({
+								items: event.originalEvent.dataTransfer.items,
+								folders: true,
+								path: ''
+							});
+						} else {
+							scope.pending_items.push({
+								items: event.originalEvent.dataTransfer.files,
+								folders: false
+							});
+						}
+						
+						processPending();
+					});
+				}).on('dragover.condo', options.drop_targets, function(event) {
+					$(this).addClass(options.hover_class);
+					
+					return false;
+				}).on('dragleave.condo', options.drop_targets, function(event) {
+					$(this).removeClass(options.hover_class);
+					
+					return false;
+				}).
+				
+				
+				//
+				// Detect manual file uploads
+				//
+				on('change.condo', ':file', function(event) {
+					var self = $(this);
+					safeApply(scope, function() {
+						scope.pending_items.push({
+							items: self[0].files,
+							folders: false
+						});
+						self.parents('form')[0].reset();
+						processPending();
+					});
 				});
-			});
-			
-			
-			//
-			// Clean up any event handlers
-			//
-			scope.$on('$destroy', function() {
-				options.drop_targets.off('.condo');
-				options.delegate.off('.condo');
-				element.removeClass('supports-svg').removeClass('no-svg');
-			});
-			
-			
-			scope.$on('coFileAddFailed', function() {
-				alert('Failed to add file: ' + broadcast.message.reason);
-			});
-			
-			
-			scope.humanReadableByteCount = function(bytes, si) {
-				var unit = si ? 1000.0 : 1024.0;
-				if (bytes < unit) return bytes + (si ? ' iB' : ' B');
-				var exp = Math.floor(Math.log(bytes) / Math.log(unit)),
-					pre = (si ? 'kMGTPE' : 'KMGTPE').charAt(exp-1) + (si ? 'iB' : 'B');
-				return (bytes / Math.pow(unit, exp)).toFixed(1) + ' ' + pre;
+				
+				
+				//
+				// Add new uploads if possible
+				//
+				scope.$watch('upload_count', function(newValue, oldValue) {
+					processPending();
+				});
+				
+				
+				//
+				// Clean up any event handlers
+				//
+				scope.$on('$destroy', function() {
+					options.drop_targets.off('.condo');
+					options.delegate.off('.condo');
+					element.removeClass('supports-svg').removeClass('no-svg');
+				});
+				
+				
+				scope.$on('coFileAddFailed', function() {
+					// TODO:: need an unobtrusive notification system for failed adds
+					// alert('Failed to add file: ' + broadcast.message.reason);
+				});
+				
+				
+				scope.humanReadableByteCount = function(bytes, si) {
+					var unit = si ? 1000.0 : 1024.0;
+					if (bytes < unit) return bytes + (si ? ' iB' : ' B');
+					var exp = Math.floor(Math.log(bytes) / Math.log(unit)),
+						pre = (si ? 'kMGTPE' : 'KMGTPE').charAt(exp-1) + (si ? 'iB' : 'B');
+					return (bytes / Math.pow(unit, exp)).toFixed(1) + ' ' + pre;
+				}
 			}
 		}
 	}]);
@@ -283,7 +370,7 @@
 	// The individual upload events
 	//	Triggers the pause, resume, abort functions
 	//
-	uploads.directive('coUpload', function() {
+	condoInterface.directive('coUpload', function() {
 		var PENDING = 0,
 			STARTED = 1,
 			PAUSED = 2,
@@ -315,7 +402,10 @@
 						element.find('td.controls').replaceWith( '<td class="blank" />' );
 						element.find('div.bar').removeClass('animate');
 						
-						scope.check_autostart();
+						if(scope.remove_completed)
+							scope.animate_remove();
+						else
+							scope.check_autostart();	// Couldn't work out how to put this into the controller
 						break;
 						
 					case PAUSED:
@@ -325,6 +415,9 @@
 							
 						scope.paused = true;
 						// No need for break
+						
+						if (scope.ignore_errors && scope.upload.error)
+							scope.check_autostart();	// Couldn't work out how to put this into the controller
 				}
 			});
 			
@@ -345,5 +438,63 @@
 			
 		};
 	});
+	
+	
+	//
+	// Toggling options
+	//	based on: https://github.com/angular-ui/bootstrap/tree/master/src/dropdownToggle
+	//
+	condoInterface.directive('dropdownToggle', ['$document', '$location', '$window', function ($document, $location, $window) {
+		var openElement = null, close;
+		return {
+			restrict: 'CA',
+			link: function(scope, element, attrs) {
+				scope.$watch(function dropdownTogglePathWatch() {return $location.path();}, function dropdownTogglePathWatchAction() {
+					if (close) { close(); }
+				});
+				
+				element.parent().bind('click', function(event) {
+					event.stopPropagation();
+				});
+				
+				element.bind('click', function(event) {
+					event.preventDefault();
+					event.stopPropagation();
+					
+					var iWasOpen = false;
+					
+					if (openElement) {
+						iWasOpen = openElement === element;
+						close();
+					}
+					
+					if (!iWasOpen){
+						element.parent().addClass('open');
+						openElement = element;
+						
+						close = function (event) {
+							if (event) {
+								event.preventDefault();
+								event.stopPropagation();
+							}
+							$document.unbind('click', close);
+							element.parent().removeClass('open');
+							close = null;
+							openElement = null;
+						};
+						
+						$document.bind('click', close);
+					}
+				});
+				
+				
+				//
+				// Center the pop-up, based on CSS location of the button
+				//
+				var popup = element.next('ul.dropdown-menu');
+				popup.css('margin-left', -(popup.width() / 2) + 'px');
+			}
+		};
+	}]);
 	
 }));
