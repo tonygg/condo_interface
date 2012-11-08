@@ -297,9 +297,16 @@
 							folders: true,
 							path: ''
 						});
-					} else {
+					} else if(!!event.originalEvent.dataTransfer.files) {
+						var files = event.originalEvent.dataTransfer.files,
+							copy = [],
+							i = 0;
+					
+						for (; i < files.length; i += 1)
+							copy.push(files[i]);
+						
 						pending_items.push({
-							items: event.originalEvent.dataTransfer.files,
+							items: copy,
 							folders: false
 						});
 					}
