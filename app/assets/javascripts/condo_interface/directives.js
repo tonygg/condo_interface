@@ -94,8 +94,10 @@
 						// in the mouse model, set the capture or add a document-level event handlers if this is our first down point
 						// nothing is required for the iOS touch model because capture is implied on touchstart
 						//
-						if (this.msSetPointerCapture)
-							this.msSetPointerCapture(pointerId);
+						try {
+							if (this.msSetPointerCapture)
+								this.msSetPointerCapture(pointerId);
+						} catch(e) {}	// was getting an 'SCRIPT16389: Unspecified error' on IE10 Win7 Preview @ 16/11/2012
 						
 						
 					} else if (theEvtObj.type.match(/move$/i)) {
