@@ -20,12 +20,12 @@
 (function (factory) {
 	if (typeof define === 'function' && define.amd) {
 		// AMD
-		define(['jquery', 'condo_controller'], factory);
+		define(['jquery', 'condo-controller'], factory);
 	} else {
 		// Browser globals
-		factory(jQuery, window.CondoController);
+		factory(jQuery);
 	}
-}(function ($, uploads, undefined) {
+}(function ($) {
 	'use strict';
 	
 	
@@ -369,9 +369,16 @@
 				});
 				
 				
+				//
+				// Notify on errors
+				// TODO:: need an unobtrusive notification system for failed adds
+				//
 				scope.$on('coFileAddFailed', function() {
-					// TODO:: need an unobtrusive notification system for failed adds
-					// alert('Failed to add file: ' + broadcast.message.reason);
+					alert('Failed to add file: ' + broadcast.message.reason);
+				});
+				
+				scope.$on('coComponentLoadFailed', function() {
+					alert('Error: failed to load ' + broadcast.message[1] + ' (' + broadcast.message[0] + ')');
 				});
 				
 				
@@ -445,7 +452,7 @@
 			scope.$watch('upload.progress', function(newValue, oldValue) {
 				scope.progress = newValue / scope.upload.size * 100;
 			});
-						
+			
 			
 			scope.animate_remove = function() {
 				scope.abort(scope.upload);
