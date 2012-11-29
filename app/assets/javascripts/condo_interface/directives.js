@@ -150,23 +150,16 @@
 	//
 	// create a directive for attaching the input events
 	//
-	condoInterface.directive('coUploads', ['Condo.Broadcast', '$timeout', function(broadcast, $timeout) {
+	condoInterface.directive('coUploads', ['Condo.Broadcast', 'Condo.Config', '$timeout', function(broadcast, options, $timeout) {
 		return {
 			controller: 'Condo.Controller',
 			link: function(scope, element, attrs) {
-				var options = {
-					delegate: attrs['coDelegate'] || element,
-					drop_targets: attrs['coTargets'] || element,
-					hover_class: attrs['coHoverClass'] || 'drag-hover',
-					pre_check: attrs['coAccepts'] || '/./i',
-					size_limit: attrs['coLimit'] || 0
-				},
 				
 				//
 				// Add files with their path information to the system
 				//	Queue items here until we decide they should be added to the view
 				//
-				processPending = function() {
+				var processPending = function() {
 					var avaliable = view_limit - scope.upload_count;
 					
 					if(avaliable > 0 && pending_items.length > 0) {
@@ -259,11 +252,14 @@
 				},
 				view_limit = 50,	// Number of uploads that should be displayed at once
 				pending_items = [];	// These are files or folders that have not been processed yet as we are at the view port limit
+									
 				
-				
-				if(!!attrs['coEndpoint'])
-					scope.endpoint = attrs['coEndpoint'];
-					
+			
+				//
+				// Set some defaults
+				//	
+				options.delegate = options.delegate || element;
+				options.drop_targets = options.drop_targets || element;
 				
 				scope.options = options;
 				scope.remove_completed = false;	// Remove completed uploads automatically	
@@ -370,15 +366,21 @@
 				
 				
 				//
-				// Notify on errors
-				// TODO:: need an unobtrusive notification system for failed adds
+				// Notification service
+				//	{
+				//		type: 'warn'|'error',
+				//		number: 1
+				//		file (optional)
+				//		details (optional)
+				//	}
 				//
-				scope.$on('coFileAddFailed', function() {
-					alert('Failed to add file: ' + broadcast.message.reason);
-				});
-				
-				scope.$on('coComponentLoadFailed', function() {
-					alert('Error: failed to load ' + broadcast.message[1] + ' (' + broadcast.message[0] + ')');
+				var messages = {
+					warn: ['file not accepted', 'file add failed - server error'],
+					error: ['file add failed - missing required uploader', 'failed to load file fingerprinting component']
+				};
+				scope.$on('coNotice', function() {
+					if(!options.supress_notifications && broadcast.message.type != 'info')
+						alert(broadcast.message.type + ': ' + messages[broadcast.message.type][broadcast.message.number]);
 				});
 				
 				
