@@ -235,7 +235,13 @@
 								if(item.path.length == 0) {
 									obj = items[i];
 									obj.getAsEntry = obj.getAsEntry || obj.webkitGetAsEntry || obj.mozGetAsEntry;
-									entry = obj.getAsEntry();
+									if(!!obj.getAsEntry) {
+										entry = obj.getAsEntry();
+									} else {
+										new_items.push(obj.getAsFile());	// Opera support
+										checkCount();
+										continue;
+									}
 								} else {
 									entry = items[i];
 								}
