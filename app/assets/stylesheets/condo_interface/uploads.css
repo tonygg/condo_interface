@@ -129,6 +129,11 @@ div.condo-uploads-wrapper > div.condo-file-selection table td {
 }
 
 
+div.condo-file-selection td.file-upload-btn > form {
+	margin: 0px;	/* reset when using full twitter bootstrap */
+}
+
+
 div.condo-file-selection td.file-upload-btn > form > span {
     /* Button styles from twitter bootstrap */
 	display: block;
@@ -140,6 +145,11 @@ div.condo-file-selection td.file-upload-btn > form > span {
 	margin: 0 auto;
 	
 	overflow:hidden;
+}
+
+
+div.condo-file-selection td.file-upload-btn > form > span label {
+	margin-bottom: 0px;
 }
 
 
@@ -167,8 +177,16 @@ div.condo-file-selection ul > li > a {
 
 div.condo-file-selection ul > li > ul {
 	left: 50%;
-	
+	padding: 1em;
 	text-align: left;
+}
+
+div.condo-file-selection ul > li > label {  /* Fixes for twiter bootstrap full: */
+	display: inline;
+}
+
+div.condo-file-selection ul > li > label > input {
+	margin-left: 0px !important;
 }
 
 
@@ -320,6 +338,8 @@ div.condo-upload > div.stats td.progressbar > div.progress {
 	border: 1pt solid #999;
 	padding: 1px;
 	background: white;
+	
+	margin-bottom: 0px;			/* reset for full twitter bootstrap */
 }
 
 
