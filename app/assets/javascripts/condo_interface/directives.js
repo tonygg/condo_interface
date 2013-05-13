@@ -20,128 +20,13 @@
 	'use strict';
 	
 	
-	var safeApply = function(scope, fn) {
-		var phase = scope.$root.$$phase;
-		if(phase == '$apply' || phase == '$digest') {
-			fn();
-		} else {
-			scope.$apply(fn);
-		}
-	};
 	
-	
-	//
-	// Allow for both mobile and desktop events or both
-	//	Overkill?
-	//
-	var condoInterface = angular.module('CondoInterface', ['CondoUploader'])
-	
-	
-	condoInterface.directive('coTap', function() {
-		
-		
-		//
-		// Opera doesn't have Object.keys so we use this wrapper
-		//
-		var NumberOfKeys = function(theObject) {
-			if (Object.keys)
-				return Object.keys(theObject).length;
-			
-			var n = 0;
-			for (var key in theObject)
-				++n;
-			
-			return n;
-		};
-		
-		return function(scope, element, attrs) {
-			var tracker = {},
-			
-			// common event handler for the mouse/pointer/touch models and their down/start, move, up/end, and cancel events
-			DoEvent = function(event) {
-				
-				//
-				// Optimise rejecting clicks (iOS) that are most likely triggered by a touch
-				//
-				if (event.originalEvent.type == "click" && NumberOfKeys(tracker) == 0)
-					return;
-				
-				var theEvtObj = event.originalEvent,
-					pointerList = theEvtObj.changedTouches ? theEvtObj.changedTouches : [theEvtObj];
-				for (var i = 0; i < pointerList.length; ++i) {
-					var pointerObj = pointerList[i],
-						pointerId = (typeof pointerObj.identifier != 'undefined') ? pointerObj.identifier : (typeof pointerObj.pointerId != 'undefined') ? pointerObj.pointerId : 1;
-					 
-					if (theEvtObj.type.match(/(start|down)$/i)) {
-						// clause for processing MSPointerDown, touchstart, and mousedown
-						
-						//
-						// Track the element the event started on and if we should execute the attached action
-						//
-						tracker[pointerId] = {element: this, execute: true};
-						
-						//
-						// in the Microsoft pointer model, set the capture for this pointer
-						// in the mouse model, set the capture or add a document-level event handlers if this is our first down point
-						// nothing is required for the iOS touch model because capture is implied on touchstart
-						//
-						try {
-							if (this.msSetPointerCapture)
-								this.msSetPointerCapture(pointerId);
-						} catch(e) {}	// was getting an 'SCRIPT16389: Unspecified error' on IE10 Win7 Preview @ 16/11/2012
-						
-						
-					} else if (theEvtObj.type.match(/move$/i)) {
-						// clause handles MSPointerMove and touchmove
-						
-						if(tracker[pointerId])
-							tracker[pointerId].execute = false;
-						
-						
-					} else if (tracker[pointerId] && theEvtObj.type.match(/(up|end|cancel|click)$/i)) {
-						// clause handles up/end/cancel/click
-						var target = tracker[pointerId].element;
-						 
-						if (!theEvtObj.type.match(/cancel$/i) && tracker[pointerId].execute === true)
-							safeApply(scope, attrs['coTap']);	// Apply the click, touch, point event
-						
-						delete tracker[pointerId];
-						
-						//
-						// in the Microsoft pointer model, release the capture for this pointer
-						// in the mouse model, release the capture or remove document-level event handlers if there are no down points
-						// nothing is required for the iOS touch model because capture is implied on touchstart
-						//
-						if (target.msReleasePointerCapture)
-							target.msReleasePointerCapture(pointerId);
-					}
-				}
-			};
- 
-			if (window.navigator.msPointerEnabled) {
-				// Microsoft pointer model
-				element.on('MSPointerDown.condo MSPointerMove.condo MSPointerUp.condo MSPointerCancel.condo', DoEvent);
-			} else {
-				// iOS touch model & mouse model
-				element.on('touchstart.condo touchmove.condo touchend.condo touchcancel.condo mousedown.condo click.condo', DoEvent);
-			}
-			
-			
-			//
-			// Clean up any event handlers
-			//
-			scope.$on('$destroy', function() {
-				element.off('.condo');
-			});
-			
-			
-		};
-	});
+	angular.module('Condo').
 	
 	//
 	// create a directive for attaching the input events
 	//
-	condoInterface.directive('coUploads', ['Condo.Broadcast', 'Condo.Config', '$timeout', function(broadcast, options, $timeout) {
+	directive('coUploads', ['Condo.Broadcast', 'Condo.Config', '$timeout', '$safeApply', function(broadcast, options, $timeout, safeApply) {
 		return {
 			controller: 'Condo.Controller',
 			link: function(scope, element, attrs) {
@@ -212,7 +97,7 @@
 												folders: false
 											});
 										}
-										safeApply(scope, function() {
+										safeApply.do(scope, function() {
 											$timeout(processPending);
 										});
 									}
@@ -306,7 +191,7 @@
 						});
 					}
 					
-					safeApply(scope, function() {	
+					safeApply.do(scope, function() {	
 						processPending();
 					});
 				}).on('dragover.condo', options.drop_targets, function(event) {
@@ -338,7 +223,7 @@
 						folders: false
 					});
 					
-					safeApply(scope, function() {
+					safeApply.do(scope, function() {
 						processPending();
 					});
 				});
@@ -390,14 +275,14 @@
 				}
 			}
 		}
-	}]);
+	}]).
 	
 	
 	//
 	// The individual upload events
 	//	Triggers the pause, resume, abort functions
 	//
-	condoInterface.directive('coUpload', function() {
+	directive('coUpload', ['$safeApply', function(safeApply) {
 		var PENDING = 0,
 			STARTED = 1,
 			PAUSED = 2,
@@ -457,21 +342,21 @@
 				scope.abort(scope.upload);
 				
 				element.fadeOut(800, function() {
-					safeApply(scope, function() {
+					safeApply.do(scope, function() {
 						scope.remove(scope.upload);
 					});
 				});
 			};
 			
 		};
-	});
+	}]).
 	
 	
 	//
 	// Toggling options
 	//	based on: https://github.com/angular-ui/bootstrap/tree/master/src/dropdownToggle
 	//
-	condoInterface.directive('dropdownToggle', ['$document', '$location', '$window', function ($document, $location, $window) {
+	directive('dropdownToggle', ['$document', '$location', '$window', function ($document, $location, $window) {
 		var openElement = null, close;
 		return {
 			restrict: 'CA',

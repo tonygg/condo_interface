@@ -17,7 +17,7 @@
 					<table>
 						<tr>
 							<td class="size">{{size}}</td>
-							<td class="controls image" ng-class="{'paused':paused, 'uploading':!paused}" co-tap="playpause(upload)"></td>
+							<td class="controls image" ng-class="{'paused':paused, 'uploading':!paused}" ng-click="playpause(upload)"></td>
 							<td class="progressbar">
 								<div class="progress " role="progressbar" aria-live="polite" aria-valuenow="{{progress}}" aria-valuemin="0" aria-valuemax="100">
 									<div class="bar" ng-style="{ 'width': progress + '%' }" ></div>
@@ -26,7 +26,7 @@
 									</div>
 								</div>
 							</td>
-							<td co-tap="animate_remove(upload, 900)" class="abort image"></td>
+							<td ng-click="animate_remove(upload, 900)" class="abort image"></td>
 						</tr>
 					</table>
 				</div>
