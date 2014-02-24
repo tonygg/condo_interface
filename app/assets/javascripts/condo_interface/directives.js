@@ -334,7 +334,9 @@
 			});
 			
 			scope.$watch('upload.progress', function(newValue, oldValue) {
-				scope.progress = newValue / scope.upload.size * 100;
+				var percentage = (newValue / scope.upload.size * 100).toFixed(2);
+				scope.progress = percentage;
+				scope.upload.message = percentage + " %"
 			});
 			
 			
